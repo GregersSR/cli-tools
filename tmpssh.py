@@ -3,7 +3,10 @@
 # Runs an SSH server that supports shell and SFTP access for the current user.
 # No root privileges required.
 
+# Requires sshd in PATH, but no Python dependencies.
+
 import os
+import sys
 import pwd
 import shutil
 import subprocess
