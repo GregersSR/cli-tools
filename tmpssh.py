@@ -92,6 +92,7 @@ def merge_files(files: list[Path]) -> Path:
 
 def ensure_host_key() -> Path:
     host_key = STATE_DIR / 'host_ed25519_key'
+    STATE_DIR.mkdir(mode=0o700, exist_ok=True)
     if not host_key.exists():
         subprocess.run(['ssh-keygen', '-q', '-N', '', '-t', 'ed25519', '-f', str(host_key)]).check_returncode()
     return host_key
