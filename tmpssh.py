@@ -17,7 +17,12 @@ from pathlib import Path
 from argparse import ArgumentParser
 
 GITHUB_KEYS_ENDPOINT = "https://github.com/{username}.keys"
-STATE_DIR = Path(os.environ['XDG_STATE_HOME']) / 'tmpssh'
+
+if 'XDG_STATE_HOME' in os.environ:
+    STATE_DIR = Path(os.environ['XDG_STATE_HOME'])
+else:
+    STATE_DIR = Path.home() / '.local/state'
+STATE_DIR = STATE_DIR / 'tmpssh'
 
 def create_parser():
     parser = ArgumentParser(usage="Grants temporary SSH access as the current user")
@@ -35,8 +40,7 @@ def do_get(url):
 
 def ensure_cache_dir() -> Path:
     cache_dir = STATE_DIR / 'pubkeys'
-    STATE_DIR.mkdir(mode=0o700, exist_ok=True)
-    cache_dir.mkdir(mode=0o700, exist_ok=True)
+    cache_dir.mkdir(mode=0o700, exist_ok=True, parents=True)
     return cache_dir
 
 def get_and_save_url(file: Path, url: str):
@@ -92,7 +96,7 @@ def merge_files(files: list[Path]) -> Path:
 
 def ensure_host_key() -> Path:
     host_key = STATE_DIR / 'host_ed25519_key'
-    STATE_DIR.mkdir(mode=0o700, exist_ok=True)
+    STATE_DIR.mkdir(mode=0o700, exist_ok=True, parents=True)
     if not host_key.exists():
         subprocess.run(['ssh-keygen', '-q', '-N', '', '-t', 'ed25519', '-f', str(host_key)]).check_returncode()
     return host_key
