@@ -86,6 +86,7 @@ AllowUsers	{user}
 PubkeyAuthentication	yes
 PasswordAuthentication	no
 PermitRootLogin	no
+Subsystem sftp internal-sftp
 """
     
 def merge_files(files: list[Path]) -> Path:
