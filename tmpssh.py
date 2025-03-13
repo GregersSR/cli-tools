@@ -25,8 +25,8 @@ else:
 STATE_DIR = STATE_DIR / 'tmpssh'
 
 def create_parser():
-    parser = ArgumentParser(usage="Grants temporary SSH access as the current user")
-    parser.add_argument("-f", "--file", action="append", help="authorized_keys file")
+    parser = ArgumentParser(prog="tmpssh", usage="Grants temporary SSH access as the current user")
+    parser.add_argument("-f", "--file", action="append", type=Path, help="authorized_keys file")
     parser.add_argument("--url", action="append", help="authorized_keys file from the web")
     parser.add_argument("--github", action="append", help="Grant access to a Github user")
     parser.add_argument("-p", "--port", default=2222, help="Port to listen on")
@@ -67,6 +67,13 @@ def make_authorized_keys(parsed_args) -> Path:
             sources.append(cache_file_path)        
         os.umask(prev_mask)
     
+    missing_files = list()
+    for source in sources:
+        if not source.exists():
+            missing_files.append(str(source))
+    if missing_files:
+        parsed_args.parser.error(f"The following files do not exist: {missing_files}")
+
     n_sources = len(sources)
     if n_sources == 0:
         authorized_keys = Path.home() / '.ssh/authorized_keys'
@@ -75,7 +82,7 @@ def make_authorized_keys(parsed_args) -> Path:
         else:
             parsed_args.parser.error("No key sources given, and ~/.ssh/authorized_keys does not exist.")
     elif n_sources == 1:
-        return sources[0]
+        return sources[0].resolve()
     else:
         return merge_files(sources)
     
