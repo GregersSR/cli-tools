@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+from argparse import ArgumentParser
+from pathlib import Path
+import shutil
+import subprocess
+from typing import List, Iterable
+
+HERE = Path(__file__).resolve().parent
+
+class ParsedArgs:
+    repo_path: Path
+    dirs: List[Path]
+
+def touch(path: str):
+    fd = None
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_CREAT)
+        os.read(fd, 1)
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+def indent(lines: Iterable[str], indent_string: str = '\t') -> Iterable[str]:
+    for line in lines:
+        yield indent_string + line
+
+def config_dir() -> Path:
+    return Path(os.environ.get('XDG_CONFIG_HOME') or (Path.home() / '.config')).expanduser() / 'repos'
+
+def default_check_file() -> Path:
+    return config_dir() / 'check_repos.txt'
+
+def create_parser():
+    parser = ArgumentParser()
+    subparsers = parser.add_subparsers()
+
+    init_parser = subparsers.add_parser("init", aliases=["new"], help="Make a new repo with some scaffolding.")
+    init_parser.add_argument("repo_path", nargs='?', default=Path('.'), help="Path for the new repo.", type=Path)
+    init_parser.set_defaults(func=init)
+
+    check_parser = subparsers.add_parser("check", help="Check for uncommitted changes recursively")
+#    check_parser.add_argument("dirs", type=Path, nargs='*', help="Directories containing Git directories to check")
+    check_parser.add_argument("-f", "--file", type=Path, default=default_check_file(), help="A text file containing the path of Git repos to check.")
+    check_parser.set_defaults(func=check)
+
+    return parser
+
+def template_dir() -> Path:
+    return Path(os.environ.get('REPO_TEMPLATE', HERE / 'template')).expanduser()
+
+def copy_template(src: Path, dst: Path):
+    for entry in src.iterdir():
+        if entry.name == '.git':
+            continue
+        dest = dst / entry.name
+        if entry.is_dir():
+            shutil.copytree(entry, dest, dirs_exist_ok=True)
+        else:
+            shutil.copy2(entry, dest)
+
+def init(args: ParsedArgs):
+    repo_path = args.repo_path.expanduser()
+    template = template_dir()
+    if not template.is_dir():
+        raise ValueError(f'Template directory does not exist: {template}')
+
+    repo_path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "init"], cwd=repo_path, check=True)
+    copy_template(template, repo_path)
+
+def check(args: ParsedArgs):
+    file = args.file.expanduser()
+    longest_repo_name = -1
+    nonchanged_repos = []
+    changed_repos = []
+    with file.open() as fp:
+        for line in fp:
+            repo = Path(line.strip())
+            longest_repo_name = max(len(repo.name), longest_repo_name)
+            changes = n_changes(repo)
+            if changes > 0:
+                changed_repos.append((repo.name, changes))
+            else:
+                nonchanged_repos.append(repo.name)
+    output_template = """
+Repos with changes:
+{changelist}
+
+Repos with no changes:
+{nonchanged}
+    """
+
+    change_entries = [f"{repo:<{longest_repo_name}}{n:<4}" for (n, repo) in changed_repos]
+    print(output_template.format(
+        changelist="\n".join(indent(change_entries)),
+        nonchanged="\n".join(indent(nonchanged_repos)))
+        )
+
+            
+
+def n_changes(repo: Path) -> int:
+    repo = repo.expanduser().resolve()
+    if not repo.exists():
+        raise ValueError(f"Nonexistent repo {repo}")
+    p = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"], capture_output=True)
+    lines = 0
+    for line in p.stdout:
+        lines += 1
+    return lines
+
+def parse_args(parser: ArgumentParser, args: List[str]) -> ParsedArgs:
+    return parser.parse_args(args)
+
+def main(args: List[str]):
+    parser = create_parser()
+    args: ParsedArgs = parse_args(parser, args)
+    if hasattr(args, 'func'):
+        args.func(args)
+    else:
+        parser.error("Unknown action")
+    
+if __name__ == '__main__':
+    main(sys.argv[1:])

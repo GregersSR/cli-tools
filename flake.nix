@@ -4,21 +4,35 @@
   };
 
   outputs = { self, nixpkgs }:
-  let
-    system = "x86_64-linux";
-    pkgs = nixpkgs.legacyPackages.${system};
-    python = pkgs.python3.withPackages (ps: with ps; [ requests ]);
-  in
-  {
-    packages.${system} = {
-      tmpssh = pkgs.writeShellApplication {
-        name = "tmpssh";
-        runtimeInputs = [ python pkgs.openssh ];
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+      tmpssh = pkgs.callPackage ./tmpssh/package.nix { };
+      repos = pkgs.callPackage ./repos/package.nix { };
+      tmpsshApp = {
+        type = "app";
+        program = "${tmpssh}/bin/tmpssh";
+      };
+      reposApp = {
+        type = "app";
+        program = "${repos}/bin/repos";
+      };
+    in
+    {
+      packages.${system} = {
+        inherit tmpssh repos;
+        default = repos;
+      };
 
-        text = ''
-            python ${./tmpssh.py} "$@"
-        '';
+      checks.${system} = {
+        inherit tmpssh repos;
+        default = repos;
+      };
+
+      apps.${system} = {
+        tmpssh = tmpsshApp;
+        repos = reposApp;
+        default = reposApp;
       };
     };
-  };
 }
