@@ -45,6 +45,7 @@ def ensure_cache_dir() -> Path:
 
 def get_and_save_url(file: Path, url: str):
     content = do_get(url)
+    os.umask(0o077)
     with file.open('w') as fp:
         fp.write(content)
 
