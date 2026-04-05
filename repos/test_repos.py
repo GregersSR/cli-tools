@@ -73,7 +73,7 @@ class ReposInitTests(unittest.TestCase):
             self.assertTrue((repo_dir / ".git").is_dir())
             self.assertTrue((repo_dir / ".gitignore").is_file())
 
-    def test_init_uses_repo_template_override(self):
+    def test_init_uses_repos_template_override(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             template = root / "template"
@@ -86,7 +86,7 @@ class ReposInitTests(unittest.TestCase):
             fake_git_dir.mkdir()
             (fake_git_dir / "TEMPLATE_MARKER").write_text("skip\n")
 
-            with environ(REPO_TEMPLATE=template), chdir(root):
+            with environ(REPOS_TEMPLATE=template), chdir(root):
                 REPOS.main(["init", "custom"])
 
             repo_dir = root / "custom"
@@ -95,6 +95,22 @@ class ReposInitTests(unittest.TestCase):
             self.assertTrue((repo_dir / "nested" / "child.txt").is_file())
             self.assertFalse((repo_dir / ".gitignore").exists())
             self.assertFalse((repo_dir / ".git" / "TEMPLATE_MARKER").exists())
+
+    def test_init_prefers_xdg_config_template(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_home = root / "config"
+            template = config_home / "repos" / "template"
+            template.mkdir(parents=True)
+            (template / "CONFIG_MARKER").write_text("config\n")
+
+            with environ(XDG_CONFIG_HOME=config_home), chdir(root):
+                REPOS.main(["init", "configured"])
+
+            repo_dir = root / "configured"
+            self.assertTrue((repo_dir / ".git").is_dir())
+            self.assertTrue((repo_dir / "CONFIG_MARKER").is_file())
+            self.assertFalse((repo_dir / ".gitignore").exists())
 
     def test_check_defaults_to_xdg_config_file(self):
         with tempfile.TemporaryDirectory() as tmp:

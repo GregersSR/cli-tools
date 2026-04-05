@@ -49,7 +49,15 @@ def create_parser():
     return parser
 
 def template_dir() -> Path:
-    return Path(os.environ.get('REPO_TEMPLATE', HERE / 'template')).expanduser()
+    configured_template = os.environ.get('REPOS_TEMPLATE')
+    if configured_template is not None:
+        return Path(configured_template).expanduser()
+
+    managed_template = config_dir() / 'template'
+    if managed_template.is_dir():
+        return managed_template
+
+    return HERE / 'template'
 
 def copy_template(src: Path, dst: Path):
     for entry in src.iterdir():
