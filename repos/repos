@@ -60,14 +60,14 @@ def template_dir() -> Path:
     return HERE / 'template'
 
 def copy_template(src: Path, dst: Path):
+    if (dst / '.git').exists():
+        raise FileExistsError(".git already exists, refusing to overwrite")
     for entry in src.iterdir():
-        if entry.name == '.git':
-            continue
         dest = dst / entry.name
         if entry.is_dir():
-            shutil.copytree(entry, dest, dirs_exist_ok=True)
+            shutil.copytree(entry, dest, dirs_exist_ok=True, symlinks=False)
         else:
-            shutil.copy2(entry, dest)
+            shutil.copy2(entry, dest, follow_symlinks=True)
 
 def init(args: ParsedArgs):
     repo_path = args.repo_path.expanduser()
@@ -75,8 +75,7 @@ def init(args: ParsedArgs):
     if not template.is_dir():
         raise ValueError(f'Template directory does not exist: {template}')
 
-    repo_path.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "init"], cwd=repo_path, check=True)
+    repo_path.mkdir(exist_ok=True)
     copy_template(template, repo_path)
 
 def check(args: ParsedArgs):
@@ -125,6 +124,7 @@ def parse_args(parser: ArgumentParser, args: List[str]) -> ParsedArgs:
 def main(args: List[str]):
     parser = create_parser()
     args: ParsedArgs = parse_args(parser, args)
+    setattr(args, "parser", parser)
     if hasattr(args, 'func'):
         args.func(args)
     else:
