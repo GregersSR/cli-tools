@@ -63,7 +63,10 @@ def copy_template(src: Path, dst: Path):
     if (dst / '.git').exists():
         raise FileExistsError(".git already exists, refusing to overwrite")
     for entry in src.iterdir():
-        dest = dst / entry.name
+        if entry.name.startswith("dot-"):
+            dest = dst / "." + entry.name[4:]
+        else:
+            dest = dst / entry.name
         if entry.is_dir():
             shutil.copytree(entry, dest, dirs_exist_ok=True, symlinks=False)
         else:
