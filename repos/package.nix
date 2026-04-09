@@ -7,7 +7,7 @@ stdenv.mkDerivation {
   src = ./.;
   dontBuild = true;
 
-  nativeBuildInputs = [ makeWrapper python3 git ];
+  nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
     runHook preInstall
@@ -27,7 +27,7 @@ stdenv.mkDerivation {
     runHook preInstallCheck
     cp ${./test_repos.py} $TMPDIR/test_repos.py
     REPOS_SCRIPT="$out/libexec/repos/repos" \
-      python3 -m unittest discover -s $TMPDIR -p "test_*.py" -v
+      ${python3}/bin/python3 -m unittest discover -s $TMPDIR -p "test_*.py" -v
     runHook postInstallCheck
   '';
 
