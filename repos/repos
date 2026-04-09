@@ -60,15 +60,14 @@ def template_dir() -> Path:
     return HERE / 'template'
 
 def copy_template(src: Path, dst: Path):
-    if (dst / '.git').exists():
-        raise FileExistsError(".git already exists, refusing to overwrite")
     for entry in src.iterdir():
         if entry.name.startswith("dot-"):
-            dest = dst / "." + entry.name[4:]
+            dest = dst / ("." + entry.name[4:])
         else:
             dest = dst / entry.name
         if entry.is_dir():
-            shutil.copytree(entry, dest, dirs_exist_ok=True, symlinks=False)
+            dest.mkdir()
+            copy_template(entry, dest)
         else:
             shutil.copy2(entry, dest, follow_symlinks=True)
 
@@ -78,7 +77,7 @@ def init(args: ParsedArgs):
     if not template.is_dir():
         raise ValueError(f'Template directory does not exist: {template}')
 
-    repo_path.mkdir(exist_ok=True)
+    repo_path.mkdir(parents=True, exist_ok=True)
     copy_template(template, repo_path)
 
 def check(args: ParsedArgs):

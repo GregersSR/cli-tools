@@ -17,8 +17,7 @@ stdenv.mkDerivation {
     cp -r template "$out/libexec/repos/template"
 
     makeWrapper ${python3}/bin/python3 "$out/bin/repos" \
-      --add-flags "$out/libexec/repos/repos" \
-      --prefix PATH : ${lib.makeBinPath [ git ]}
+      --add-flags "$out/libexec/repos/repos"
 
     runHook postInstall
   '';
@@ -26,9 +25,9 @@ stdenv.mkDerivation {
   doInstallCheck = true;
   installCheckPhase = ''
     runHook preInstallCheck
-    PATH=${lib.makeBinPath [ git ]}:$PATH \
-      REPOS_SCRIPT="$out/libexec/repos/repos" \
-      ${python3}/bin/python3 -m unittest -v test_repos
+    cp ${./test_repos.py} $TMPDIR/test_repos.py
+    REPOS_SCRIPT="$out/libexec/repos/repos" \
+      python3 -m unittest discover -s $TMPDIR -p "test_*.py" -v
     runHook postInstallCheck
   '';
 
